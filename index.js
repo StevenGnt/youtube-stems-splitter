@@ -49,15 +49,13 @@ async function doTheThing() {
 
     const tmpDir = path.join(os.tmpdir(), `youtube-stems-splitter-${crypto.randomUUID()}`);
 
-    console.info('Temporary directory:', tmpDir);
-
     try {
         const { title } = await getVideoInfo(url);
         const safeTitle = sanitize(title);
         const tmpVideoAudioFilePath = path.join(tmpDir, `${safeTitle}.mp3`);
         const outputDirectory = path.join(output || process.cwd(), safeTitle)
 
-        console.info(`Downloading video audio for ${title}`);
+        console.info(`Downloading video audio for "${title}"`);
         await downloadVideoAudio(url, tmpVideoAudioFilePath);
 
         console.info('Splitting stems, output in', outputDirectory);
