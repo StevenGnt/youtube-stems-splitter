@@ -22,11 +22,7 @@ async function getVideoInfo(url) {
 }
 
 async function downloadVideoAudio(url, output) {
-    return youtubedl(url, {
-        output,
-        extractAudio: true,
-        audioFormat: 'mp3',
-    });
+    return youtubedl(url, { output, extractAudio: true, audioFormat: 'mp3' });
 }
 
 function splitStems(audioFile, outputDirectory) {
@@ -44,10 +40,6 @@ function splitStems(audioFile, outputDirectory) {
     });
 }
 
-async function cleanTemporaryFiles(tmpDirectory) {
-    return fs.rmSync(tmpDirectory, { recursive: true });
-}
-
 async function doTheThing() {
     console.info('Starting script');
 
@@ -60,15 +52,14 @@ async function doTheThing() {
     console.info('Temporary directory:', tmpDir);
 
     try {
-        const { title, id } = await getVideoInfo(url);
+        const { title } = await getVideoInfo(url);
+        const safeTitle = sanitize(title);
+        const tmpVideoAudioFilePath = path.join(tmpDir, `${safeTitle}.mp3`);
+        const outputDirectory = path.join(output || process.cwd(), safeTitle)
 
-        const tmpVideoAudioFilePath = path.join(tmpDir, `${id}.mp3`);
-
-        console.info('Downloading video audio');
+        console.info(`Downloading video audio for ${title}`);
         await downloadVideoAudio(url, tmpVideoAudioFilePath);
 
-        const safeTitle = sanitize(title);
-        const outputDirectory = path.join(output || process.cwd(), safeTitle)
         console.info('Splitting stems, output in', outputDirectory);
         await splitStems(tmpVideoAudioFilePath, outputDirectory)
     } catch (e) {
@@ -76,7 +67,7 @@ async function doTheThing() {
     }
 
     console.info('Cleaning temporary files');
-    await cleanTemporaryFiles(tmpDir);
+    fs.rmSync(tmpDir, { recursive: true });
 }
 
 doTheThing();
