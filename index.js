@@ -4,12 +4,15 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-
 const argsParser = require('args-parser');
+const commandExists = require('command-exists');
+const sanitize = require('sanitize-filename');
 const youtubedl = require('youtube-dl-exec');
 
 function ensureDemucsIsInPath() {
-    // @todo
+    if (!commandExists.sync('demucs')) {
+        throw new Error('"demucs" command is not available in the PATH.');
+    }
 }
 
 async function getVideoInfo(url) {
@@ -24,17 +27,18 @@ async function downloadVideoAudio(url, output) {
     });
 }
 
-// @todo Use properly output directory
-// @todo Use title to name files and/or directory
-function splitStems(audioFile, outputDirectory, title) {
+function splitStems(audioFile, outputDirectory) {
     return new Promise((resolve, reject) => {
-        exec(`demucs "${audioFile}"`, (error, stdout, stderr) => {
-            const failure = error || stderr;
+        exec(
+            `demucs "${audioFile}" --mp3 --out="${outputDirectory}"`,
+            (error, stdout, stderr) => {
+                const failure = error || stderr;
 
-            failure
-                ? reject(failure)
-                : resolve(stdout);
-        });
+                failure
+                    ? reject(failure)
+                    : resolve(stdout);
+            }
+        );
     });
 }
 
@@ -44,10 +48,10 @@ async function cleanTemporaryFiles(tmpDirectory) {
 
 async function doTheThing() {
     console.info('Starting script');
-    ensureDemucsIsInPath();
-    const { url, output } = argsParser(process.argv);
 
-    const outputDirectory = output || process.cwd();
+    ensureDemucsIsInPath();
+
+    const { url, output } = argsParser(process.argv);
 
     const tmpDir = path.join(os.tmpdir(), `youtube-stems-splitter-${crypto.randomUUID()}`);
 
@@ -61,8 +65,10 @@ async function doTheThing() {
         console.info('Downloading video audio');
         await downloadVideoAudio(url, tmpVideoAudioFilePath);
 
+        const safeTitle = sanitize(title);
+        const outputDirectory = path.join(output || process.cwd(), safeTitle)
         console.info('Splitting stems, output in', outputDirectory);
-        await splitStems(tmpVideoAudioFilePath, outputDirectory, title)
+        await splitStems(tmpVideoAudioFilePath, outputDirectory)
     } catch (e) {
         console.error('An error occured', e);
     }
